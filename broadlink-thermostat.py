@@ -24,6 +24,7 @@ class Config(object):
         self.config['keyfile']      = None
         self.config['tls_insecure'] = False
         self.config['tls']          = False
+        self.config['devices']        = []
         execfile(filename, self.config)
 
         if HAVE_TLS == False:
@@ -52,6 +53,16 @@ class Config(object):
             logging.error("Configuration parameter '%s' should be specified" % key)
             sys.exit(2)
         return v
+
+    def get_devices(self):
+        if len(self.config['devices']) == 0:
+            return broadlink.discover(timeout=self.get('lookup_timeout', 5))
+        ds = []
+        for d in self.config['devices']:
+            mac = bytearray.fromhex(d['mac'].replace(':', ' '))
+            dev = broadlink.gendevice(host=(d['host'], 80), mac=mac, devtype=0x4EAD)
+            ds.append(dev)
+        return ds
         
 def unhandeledException(e):
     trace = open('/tmp/transfer-unhandled-exception.log', 'w+')
@@ -234,7 +245,7 @@ def main():
                     except:
                         pass
             print "broadlink discover"
-            devices = broadlink.discover(timeout=conf.get('lookup_timeout', 5))
+            devices = conf.get_devices()
             for device in devices:
                 divicemac = ''.join(format(x, '02x') for x in device.mac)
                 if divicemac not in founddevices.values():
